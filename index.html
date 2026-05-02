@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4-bit ALU Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0a0a0f;
+    --s1:      #12121a;
+    --s2:      #1a1a26;
+    --border:  #2a2a3a;
+    --muted:   #555570;
+    --text:    #e8e8f0;
+    --text2:   #9090b0;
+    --green:   #00dd88;
+    --amber:   #ffaa00;
+    --blue:    #4499ff;
+    --red:     #ff4466;
+    --purple:  #aa88ff;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 16px 60px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(20px, 4vw, 34px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+  }
+
+  .sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 780px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 560px) { .wrap { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 22px;
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* Binary input grid */
+  .bit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .bit-label {
+    font-size: 13px;
+    font-weight: 700;
+    width: 20px;
+    color: var(--text2);
+  }
+
+  .bits {
+    display: flex;
+    gap: 6px;
+  }
+
+  .bit-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--s2);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bit-btn.on {
+    background: #1a2a1a;
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .dec-val {
+    font-size: 13px;
+    color: var(--text2);
+    margin-left: 4px;
+  }
+
+  /* Op selector */
+  .op-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .op-btn {
+    padding: 8px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--s2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .op-btn.active {
+    border-color: var(--purple);
+    color: var(--purple);
+    background: #1a1230;
+  }
+
+  .op-sub {
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 3px;
+    display: block;
+  }
+
+  .op-btn.active .op-sub { color: var(--purple); opacity: 0.7; }
+
+  /* Result display */
+  .result-big {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+
+  .result-bin {
+    font-size: 14px;
+    color: var(--text2);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+
+  .flags {
+    display: flex;
+    gap: 10px;
+  }
+
+  .flag {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--border);
+    background: var(--s2);
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+
+  .flag.on-carry { border-color: var(--amber); color: var(--amber); background: #1e1500; }
+  .flag.on-zero  { border-color: var(--blue);  color: var(--blue);  background: #001020; }
+
+  /* Expression display */
+  .expr {
+    font-size: 15px;
+    color: var(--text2);
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    letter-spacing: 0.02em;
+  }
+
+  .expr span { color: var(--text); }
+
+  /* Log */
+  .log {
+    grid-column: 1 / -1;
+  }
+
+  .log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .log-list::-webkit-scrollbar { width: 4px; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 60px 60px 40px 60px 60px 40px 50px;
+    gap: 6px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--s2);
+    align-items: center;
+  }
+
+  .log-entry.new { background: #161620; }
+  .col-h { color: var(--muted); font-size: 10px; letter-spacing: 0.1em; }
+  .col-op { color: var(--purple); }
+  .col-r  { color: var(--green); font-weight: 500; }
+  .col-c  { color: var(--amber); }
+  .col-z  { color: var(--blue); }
+</style>
+</head>
+<body>
+
+<h1>4-bit ALU</h1>
+<p class="sub">SystemVerilog RTL &mdash; browser demo</p>
+
+<div class="wrap">
+
+  <!-- Inputs -->
+  <div class="card">
+    <div class="card-label">Inputs</div>
+
+    <div class="bit-row">
+      <span class="bit-label">A</span>
+      <div class="bits" id="bits-a">
+        <button class="bit-btn" onclick="toggleBit('a',3)">0</button>
+        <button class="bit-btn" onclick="toggleBit('a',2)">0</button>
+        <button class="bit-btn" onclick="toggleBit('a',1)">0</button>
+        <button class="bit-btn" onclick="toggleBit('a',0)">0</button>
+      </div>
+      <span class="dec-val" id="dec-a">= 0</span>
+    </div>
+
+    <div class="bit-row">
+      <span class="bit-label">B</span>
+      <div class="bits" id="bits-b">
+        <button class="bit-btn" onclick="toggleBit('b',3)">0</button>
+        <button class="bit-btn" onclick="toggleBit('b',2)">0</button>
+        <button class="bit-btn" onclick="toggleBit('b',1)">0</button>
+        <button class="bit-btn" onclick="toggleBit('b',0)">0</button>
+      </div>
+      <span class="dec-val" id="dec-b">= 0</span>
+    </div>
+
+    <div class="card-label" style="margin-top:18px;">Operation (op)</div>
+    <div class="op-grid" id="op-grid">
+      <button class="op-btn active" onclick="setOp(0)">ADD<span class="op-sub">000</span></button>
+      <button class="op-btn"       onclick="setOp(1)">SUB<span class="op-sub">001</span></button>
+      <button class="op-btn"       onclick="setOp(2)">AND<span class="op-sub">010</span></button>
+      <button class="op-btn"       onclick="setOp(3)">OR<span class="op-sub">011</span></button>
+      <button class="op-btn"       onclick="setOp(4)">XOR<span class="op-sub">100</span></button>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="card">
+    <div class="card-label">Output</div>
+    <div class="result-big" id="result-dec">0</div>
+    <div class="result-bin" id="result-bin">0000</div>
+    <div class="flags">
+      <div class="flag" id="flag-carry">carry_out = 0</div>
+      <div class="flag" id="flag-zero">zero = 0</div>
+    </div>
+    <div class="expr" id="expr-line">
+      <span id="expr-a">0</span>
+      <span id="expr-op"> + </span>
+      <span id="expr-b">0</span>
+      &nbsp;=&nbsp;
+      <span id="expr-r">0</span>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card log">
+    <div class="card-label">Operation log</div>
+    <div class="log-entry" style="margin-bottom:6px;">
+      <span class="col-h">A</span>
+      <span class="col-h">A (bin)</span>
+      <span class="col-h">op</span>
+      <span class="col-h">B</span>
+      <span class="col-h">B (bin)</span>
+      <span class="col-h">result</span>
+      <span class="col-h">flags</span>
+    </div>
+    <ul class="log-list" id="log-list"></ul>
+  </div>
+
+</div>
+
+<script>
+  let valA = 0, valB = 0, currentOp = 0;
+  const OPS = ['ADD','SUB','AND','OR ','XOR'];
+  const OP_SYMS = ['+','-','&','|','^'];
+
+  function toggleBit(which, bit) {
+    if (which === 'a') valA ^= (1 << bit);
+    else               valB ^= (1 << bit);
+    renderInputs();
+    compute();
+  }
+
+  function setOp(idx) {
+    currentOp = idx;
+    document.querySelectorAll('.op-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+    compute();
+  }
+
+  function toBin(v) {
+    return ('000' + (v & 0xF).toString(2)).slice(-4);
+  }
+
+  function renderInputs() {
+    ['a','b'].forEach(which => {
+      const val = which === 'a' ? valA : valB;
+      const btns = document.querySelectorAll(`#bits-${which} .bit-btn`);
+      btns.forEach((btn, i) => {
+        const bitIdx = 3 - i;
+        const on = !!(val & (1 << bitIdx));
+        btn.textContent = on ? '1' : '0';
+        btn.classList.toggle('on', on);
+      });
+      document.getElementById(`dec-${which}`).textContent = '= ' + (val & 0xF);
+    });
+  }
+
+  function compute() {
+    const a = valA & 0xF, b = valB & 0xF;
+    let full, result, carry, zero;
+
+    switch (currentOp) {
+      case 0: full = a + b; break;
+      case 1: full = a - b + 16; break; // keep positive for 4-bit wrap
+      case 2: full = a & b; break;
+      case 3: full = a | b; break;
+      case 4: full = a ^ b; break;
+    }
+
+    // For ADD: carry if > 15. For SUB: carry if borrow (a < b).
+    if (currentOp === 0) {
+      carry = full > 15 ? 1 : 0;
+      result = full & 0xF;
+    } else if (currentOp === 1) {
+      carry = a < b ? 1 : 0;
+      result = ((a - b) & 0xF);
+    } else {
+      carry = 0;
+      result = full & 0xF;
+    }
+    zero = result === 0 ? 1 : 0;
+
+    // Update display
+    document.getElementById('result-dec').textContent = result;
+    document.getElementById('result-bin').textContent = toBin(result);
+
+    const fc = document.getElementById('flag-carry');
+    const fz = document.getElementById('flag-zero');
+    fc.textContent = `carry_out = ${carry}`;
+    fc.className = 'flag' + (carry ? ' on-carry' : '');
+    fz.textContent = `zero = ${zero}`;
+    fz.className = 'flag' + (zero ? ' on-zero' : '');
+
+    document.getElementById('result-dec').style.color =
+      carry ? 'var(--amber)' : zero ? 'var(--blue)' : 'var(--green)';
+
+    document.getElementById('expr-a').textContent = a;
+    document.getElementById('expr-op').textContent = ' ' + OP_SYMS[currentOp] + ' ';
+    document.getElementById('expr-b').textContent = b;
+    document.getElementById('expr-r').textContent = result + (carry ? ' (carry!)' : '');
+
+    addLog(a, b, currentOp, result, carry, zero);
+  }
+
+  function addLog(a, b, op, result, carry, zero) {
+    const ul = document.getElementById('log-list');
+    const li = document.createElement('li');
+    li.className = 'log-entry new';
+    const flags = (carry ? 'C' : '-') + (zero ? 'Z' : '-');
+    li.innerHTML = `
+      <span>${a}</span>
+      <span>${toBin(a)}</span>
+      <span class="col-op">${OPS[op]}</span>
+      <span>${b}</span>
+      <span>${toBin(b)}</span>
+      <span class="col-r">${result}</span>
+      <span class="col-c">${flags}</span>
+    `;
+    ul.insertBefore(li, ul.firstChild);
+    setTimeout(() => li.classList.remove('new'), 600);
+    while (ul.children.length > 20) ul.removeChild(ul.lastChild);
+  }
+
+  // Set a nice default: A=5 B=3 ADD
+  valA = 5; valB = 3;
+  renderInputs();
+  compute();
+</script>
+</body>
+</html>
